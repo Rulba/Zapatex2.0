@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Zapatex - Venta</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .sucursal { margin: 10px 0; border: 1px solid #ccc; padding: 10px; }
+    select, input, button { margin: 5px 0; padding: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Zapatex - Venta de Productos</h1>
+  <div id="stockContainer"></div>
+
+  <h2>Realizar Venta</h2>
+  <label for="sucursalSelect">Sucursal:</label>
+  <select id="sucursalSelect"></select><br>
+
+  <label for="cantidadInput">Cantidad:</label>
+  <input type="number" id="cantidadInput" min="1"><br>
+
+  <button onclick="vender()">Vender</button>
+
+  <p id="mensaje"></p>
+
+  <script>
+    let stockData = [];
+
+    async function cargarStock() {
+      const res = await fetch('http://localhost:5000/stock');
+      stockData = await res.json();
+      
+      const container = document.getElementById('stockContainer');
+      const sucursalSelect = document.getElementById('sucursalSelect');
+
+      const sucursalesAgregadas = new Set();
+      container.innerHTML = "";
+
+      stockData.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'sucursal';
+        div.textContent = `${item.sucursal} | ${item.producto} | Cant: ${item.cantidad} | Precio: $${item.precio}`;
+        container.appendChild(div);
+
+        // llenar el dropdown con sucursales sin duplicar
+        if (!sucursalesAgregadas.has(item.sucursal)) {
+          const opt = document.createElement('option');
+          opt.value = item.sucursal;
+          opt.textContent = item.sucursal;
+          sucursalSelect.appendChild(opt);
+          sucursalesAgregadas.add(item.sucursal);
+        }
+      });
+    }
+
+    async function vender() {
+      const sucursalNombre = document.getElementById('sucursalSelect').value;
+      const cantidad = parseInt(document.getElementById('cantidadInput').value);
+      const mensaje = document.getElementById('mensaje');
+
+      if (!cantidad || cantidad < 1) {
+        mensaje.textContent = "Cantidad inválida.";
+        return;
+      }
+
+      const item = stockData.find(i => i.sucursal === sucursalNombre);
+      if (!item) {
+        mensaje.textContent = "Sucursal no encontrada.";
+        return;
+      }
+
+      const body = {
+        producto_id: 1,  // fijo para el ejemplo
+        sucursal_id: item.sucursal === "Sucursal 1" ? 1 : 2,  // adaptar si hay más
+        cantidad: cantidad
+      };
+
+      const res = await fetch('http://localhost:5000/venta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+      mensaje.textContent = data.mensaje;
+      await cargarStock(); // refrescar stock
+    }
+
+    cargarStock();
+  </script>
+</body>
+</html>
